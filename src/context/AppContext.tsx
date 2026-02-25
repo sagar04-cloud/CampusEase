@@ -108,7 +108,7 @@ function useSharedState<T>(key: string, defaultValue: T): [T, (val: T | ((prev: 
 
     const setSharedState = (newValue: T | ((prev: T) => T)) => {
         setState((prev) => {
-            const updated = typeof newValue === 'function' ? (newValue as Function)(prev) : newValue;
+            const updated = typeof newValue === 'function' ? (newValue as (prev: T) => T)(prev) : newValue;
             localStorage.setItem(key, JSON.stringify(updated));
             // Dispatch a custom event so components in the SAME tab also re-render immediately if using other instances
             window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(updated) }));
@@ -169,6 +169,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => {
     const context = useContext(AppContext);
     if (context === undefined) {
