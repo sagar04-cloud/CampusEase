@@ -1,0 +1,10 @@
+src/components/Layout.tsx(1,28): error TS6133: 'Link' is declared but its value is never read.
+src/components/Layout.tsx(1,34): error TS6133: 'useLocation' is declared but its value is never read.
+src/pages/AiChatbot.tsx(2,46): error TS6133: 'GripVertical' is declared but its value is never read.
+src/pages/FacultyDashboard.tsx(1,1): error TS6133: 'useState' is declared but its value is never read.
+src/pages/FacultyDashboard.tsx(2,110): error TS2307: Cannot find module 'chart.js' or its corresponding type declarations.
+src/pages/FacultyDashboard.tsx(3,31): error TS2307: Cannot find module 'react-chartjs-2' or its corresponding type declarations.
+src/pages/StudentDashboard.tsx(1,1): error TS6133: 'useState' is declared but its value is never read.
+src/pages/StudentDashboard.tsx(2,26): error TS2307: Cannot find module '@fullcalendar/react' or its corresponding type declarations.
+src/pages/StudentDashboard.tsx(3,27): error TS2307: Cannot find module '@fullcalendar/daygrid' or its corresponding type declarations.
+src/pages/StudentDashboard.tsx(4,31): error TS2307: Cannot find module '@fullcalendar/interaction' or its corresponding type declarations.
