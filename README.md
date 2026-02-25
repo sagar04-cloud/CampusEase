@@ -1,50 +1,73 @@
-# React + TypeScript + Vite
+# CampusEase
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+CampusEase is a comprehensive, all-in-one smart campus companion web application designed to streamline college management, enhance student-faculty communication, and provide intuitive administrative tools. With separate portals for Students, Faculty, and Administrators, CampusEase digitalizes daily educational operations effectively.
 
-Currently, two official plugins are available:
+## 🚀 Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **Multi-Role Authentication**: Dedicated portals tailored for Students, Teachers (Faculty), and System Administrators.
+*   **Intuitive Dashboards**: Visually appealing, real-time charts powered by `Chart.js` for quick data insights (e.g., Attendance, Performance).
+*   **Real-Time Data Sync**: Smooth real-time cross-tab synchronization leveraging shared browser storage/events to keep all windows up to date seamlessly.
+*   **Smart Campus Requests**: A ticketing system to submit, approve, reject, and track collegiate requests (e.g., event bookings, tech support, equipment).
+*   **Announcements System**: Broadcast campus-wide notices dynamically.
+*   **AI Chatbot Assistant**: Built-in Google Gemini AI integration to assist students with queries and standard formats (e.g., generating letter drafts).
+*   **Event Scheduling**: Interactive campus calendar mapping events effectively, integrated with `FullCalendar`.
+*   **Admin Panel Functions**: Add, manage, and view Students, Teachers, and system-wide Reports.
 
-## Expanding the ESLint configuration
+## 🛠️ Technology Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+### Frontend
+*   **Framework**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+*   **Language**: [TypeScript](https://www.typescriptlang.org/)
+*   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+*   **Icons**: [Lucide React](https://lucide.dev/)
+*   **Routing**: [React Router](https://reactrouter.com/)
+*   **Other Libraries**: `Chart.js`, `@fullcalendar/react`, `@google/genai`, `firebase`
 
-- Configure the top-level `parserOptions` property like this:
+### Backend
+*   **Runtime**: [Node.js](https://nodejs.org/)
+*   **Framework**: [Express.js](https://expressjs.com/)
+*   **Integrations**: `firebase-admin`, `cors`, `dotenv`
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## 📦 Project Setup and Installation
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+1.  **Clone the Repository** (or download the source):
+    ```bash
+    git clone https://github.com/sagar04-cloud/CampusEase.git
+    cd CampusEase
+    ```
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+2.  **Install Node Modules**:
+    You will need to install the dependencies for both the frontend and backend.
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+    *Open the first terminal (Frontend):*
+    ```bash
+    cd frontend
+    npm install
+    ```
+
+    *Open a second terminal (Backend):*
+    ```bash
+    cd backend
+    npm install
+    ```
+
+3.  **Run the Development Servers**:
+    *In the Frontend terminal:*
+    ```bash
+    npm run dev
+    ```
+
+    *In the Backend terminal:*
+    ```bash
+    node server.js
+    ```
+
+4.  **Open the Application**:
+    Vite will start the frontend server, typically at `http://localhost:5173/`. Open this URL in your browser.
+
+## 🧪 Demo Credentials
+
+The login page provides a **"Quick Fill Magic"** button specifically for demonstrating the capabilities of the application. Click it while choosing between Student or Faculty to instantly fill in valid demonstration credentials and explore the robust user interfaces. 
+
+---
+*Developed for a more connected campus.*
