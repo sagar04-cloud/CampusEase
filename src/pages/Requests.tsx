@@ -1,10 +1,32 @@
 import { useState } from 'react';
-import { Filter, Search, Plus, CheckCircle2, XCircle, Clock, Edit2 } from 'lucide-react';
+import { Search, Plus, CheckCircle2, XCircle, Clock, Edit2, Loader2, Trash2 } from 'lucide-react';
 import { useAppContext, Request } from '../context/AppContext';
+import { db } from '../firebase';
+import { ref, remove } from 'firebase/database';
+import CreateRequestModal from '../components/CreateRequestModal';
 
-export default function Requests() {
+type Props = { userName: string; userEmail: string; role: string };
+
+export default function Requests({ userName, userEmail, role }: Props) {
     const [activeTab, setActiveTab] = useState('All');
-    const { requests, addRequest, updateRequest } = useAppContext();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const { requests, loadingRequests, addRequest, updateRequest, updateRequestStatus } = useAppContext();
+
+    const isStudent = role === 'student';
+    const isFaculty = role?.startsWith('faculty');
+
+    // Filter requests: Students see only theirs, Faculty see everything
+    const filteredByRole = isStudent 
+        ? requests.filter(r => r.studentEmail === userEmail)
+        : requests;
+
+    const filteredRequests = filteredByRole.filter(r => {
+        const matchesTab = activeTab === 'All' || r.status === activeTab;
+        const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                             r.author.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTab && matchesSearch;
+    });
 
     const handleEditRequest = (id: string, currentTitle: string) => {
         const newTitle = prompt('Edit Request Title:', currentTitle);
@@ -13,20 +35,15 @@ export default function Requests() {
         }
     };
 
-    const handleCreateRequest = () => {
-        const newReq: Request = {
-            id: `REQ-0${requests.length + 38}`,
-            title: 'New Event Proposal',
-            type: 'Event',
-            status: 'Pending',
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            author: 'Current User',
-            priority: 'Medium'
-        };
-        addRequest(newReq);
+    const handleDeleteRequest = (id: string) => {
+        if (window.confirm('Are you sure you want to delete this request?')) {
+            remove(ref(db, `requests/${id}`));
+        }
     };
 
-    const filteredRequests = activeTab === 'All' ? requests : requests.filter(r => r.status === activeTab);
+    const handleCreateRequest = async (newReq: Omit<Request, 'id' | 'timestamp'>) => {
+        await addRequest(newReq);
+    };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -36,31 +53,46 @@ export default function Requests() {
                 return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20"><Clock className="h-3.5 w-3.5" /> Pending</span>;
             case 'Rejected':
                 return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2 py-1 text-xs font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20"><XCircle className="h-3.5 w-3.5" /> Rejected</span>;
+            case 'In Progress':
+                return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20"><Clock className="h-3.5 w-3.5" /> In Progress</span>;
             default:
-                return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20">{status}</span>;
+                return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-50 ring-1 ring-inset ring-gray-600/20">{status}</span>;
         }
     };
 
     return (
         <div className="space-y-6">
+            <CreateRequestModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleCreateRequest}
+                userName={userName}
+                userEmail={userEmail}
+                role={role}
+            />
+
             <div className="sm:flex sm:items-center sm:justify-between section-header pb-4 border-b border-gray-200">
                 <div>
                     <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-                        Manage Requests
+                        {isStudent ? 'My Requests' : 'Manage Requests'}
                     </h2>
                     <p className="mt-2 text-sm text-gray-500">
-                        Track, review, and manage all campus requests and applications.
+                        {isStudent 
+                            ? 'Track the status of your applications and requests.' 
+                            : 'Review, approve, or reject student applications and campus requests.'}
                     </p>
                 </div>
-                <div className="mt-4 flex sm:ml-4 sm:mt-0">
-                    <button
-                        onClick={handleCreateRequest}
-                        className="inline-flex items-center gap-x-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all duration-200"
-                    >
-                        <Plus aria-hidden="true" className="-ml-0.5 h-5 w-5" />
-                        Create Request
-                    </button>
-                </div>
+                {isStudent && (
+                    <div className="mt-4 flex sm:ml-4 sm:mt-0">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="inline-flex items-center gap-x-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all duration-200"
+                        >
+                            <Plus aria-hidden="true" className="-ml-0.5 h-5 w-5" />
+                            Create Request
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -86,15 +118,12 @@ export default function Requests() {
                         </div>
                         <input
                             type="text"
-                            name="search"
-                            id="search"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             className="block w-full rounded-xl border-0 py-2 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                             placeholder="Search requests..."
                         />
                     </div>
-                    <button className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                        <Filter className="h-4 w-4 text-gray-500" />
-                    </button>
                 </div>
             </div>
 
@@ -111,42 +140,75 @@ export default function Requests() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
-                            {filteredRequests.map((request) => (
-                                <tr key={request.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
+                            {loadingRequests ? (
+                                <tr><td colSpan={5} className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin text-indigo-400 mx-auto" /></td></tr>
+                            ) : filteredRequests.map((request) => (
+                                <tr key={request.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="whitespace-nowrap py-5 pl-4 pr-3 sm:pl-6">
                                         <div className="flex items-center">
                                             <div>
                                                 <div className="font-medium text-gray-900">{request.title}</div>
                                                 <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                                                    <span className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{request.id}</span>
+                                                    <span className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[80px]">{request.id}</span>
                                                     • By {request.author}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500 w-32">
+                                    <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500">
                                         {request.type}
                                     </td>
-                                    <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500 w-32">
+                                    <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500">
                                         {request.date}
                                     </td>
-                                    <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500 w-32">
+                                    <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500">
                                         {getStatusBadge(request.status)}
                                     </td>
-                                    <td className="relative whitespace-nowrap py-5 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 w-16">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleEditRequest(request.id, request.title); }}
-                                            className="text-blue-500 hover:text-blue-700 transition-colors p-1.5 rounded-md hover:bg-blue-50"
-                                            title="Edit Request"
-                                        >
-                                            <Edit2 className="h-4 w-4" aria-hidden="true" />
-                                        </button>
+                                    <td className="relative whitespace-nowrap py-5 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                        <div className="flex justify-end gap-2">
+                                            {isFaculty && request.status === 'Pending' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => updateRequestStatus(request.id, 'Approved')}
+                                                        className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-md hover:bg-emerald-50"
+                                                        title="Approve"
+                                                    >
+                                                        <CheckCircle2 className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateRequestStatus(request.id, 'Rejected')}
+                                                        className="text-rose-600 hover:text-rose-800 p-1.5 rounded-md hover:bg-rose-50"
+                                                        title="Reject"
+                                                    >
+                                                        <XCircle className="h-4 w-4" />
+                                                    </button>
+                                                </>
+                                            )}
+                                            {(isStudent || role === 'faculty_admin') && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleEditRequest(request.id, request.title)}
+                                                        className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteRequest(request.id)}
+                                                        className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    {filteredRequests.length === 0 && (
+                    {!loadingRequests && filteredRequests.length === 0 && (
                         <div className="text-center py-12">
                             <p className="text-sm text-gray-500">No requests found matching your filter.</p>
                         </div>

@@ -1,4 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { db } from '../firebase';
+import { ref, onValue, set, push, update, remove, get } from 'firebase/database';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Request = {
     id: string;
@@ -8,10 +12,12 @@ export type Request = {
     date: string;
     author: string;
     priority: string;
+    studentEmail?: string; // Track who made the request
+    timestamp: number;
 };
 
 export type Announcement = {
-    id: number;
+    id: string;
     title: string;
     content: string;
     date: string;
@@ -29,140 +35,226 @@ export type CampusEvent = {
     date: string;
     end?: string;
     color: string;
+    description?: string;
 };
+
+export type Notification = {
+    id: string;
+    title: string;
+    message: string;
+    timestamp: number;
+    isRead: boolean;
+    type: 'success' | 'info' | 'warning' | 'error';
+    recipientEmail: string; // Target user
+};
+
+// ─── Context Type ─────────────────────────────────────────────────────────────
 
 type AppContextType = {
     requests: Request[];
+    loadingRequests: boolean;
     updateRequestStatus: (id: string, status: Request['status']) => void;
-    addRequest: (request: Request) => void;
+    addRequest: (request: Omit<Request, 'id' | 'timestamp'>) => void;
     updateRequest: (id: string, updates: Partial<Request>) => void;
+
     announcements: Announcement[];
-    addAnnouncement: (announcement: Announcement) => void;
-    updateAnnouncement: (id: number, updates: Partial<Announcement>) => void;
+    loadingAnnouncements: boolean;
+    addAnnouncement: (announcement: Omit<Announcement, 'id'>) => void;
+    updateAnnouncement: (id: string, updates: Partial<Announcement>) => void;
+    deleteAnnouncement: (id: string) => void;
+
     campusEvents: CampusEvent[];
-    addCampusEvent: (event: CampusEvent) => void;
+    loadingEvents: boolean;
+    addCampusEvent: (event: Omit<CampusEvent, 'id'>) => void;
     updateCampusEvent: (id: string, updates: Partial<CampusEvent>) => void;
     removeCampusEvent: (id: string) => void;
+
+    notifications: Notification[];
+    loadingNotifications: boolean;
+    addNotification: (notif: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
+    markNotificationAsRead: (id: string) => void;
+    markAllNotificationsAsRead: (email: string) => void;
 };
 
-const defaultRequests: Request[] = [
-    { id: 'REQ-042', title: 'Projector Repair - Room 302', type: 'Maintenance', status: 'Pending', date: 'Feb 25, 2026', author: 'Alex Johnson', priority: 'High' },
-    { id: 'REQ-041', title: 'Tech Symposium Hall Booking', type: 'Event', status: 'Pending', date: 'Feb 24, 2026', author: 'Computer Science Club', priority: 'Medium' },
-    { id: 'REQ-040', title: 'Wi-Fi Issue in Library', type: 'IT Support', status: 'In Progress', date: 'Feb 23, 2026', author: 'Sarah Smith', priority: 'High' },
-    { id: 'REQ-039', title: 'Sick Leave Application', type: 'Academic', status: 'Approved', date: 'Feb 20, 2026', author: 'Alex Johnson', priority: 'Low' },
-    { id: 'REQ-038', title: 'New Lab Equipment Request', type: 'Procurement', status: 'Rejected', date: 'Feb 15, 2026', author: 'Chemistry Dept', priority: 'Medium' },
-];
-
-const defaultAnnouncements: Announcement[] = [
-    {
-        id: 1,
-        title: 'Annual Tech Symposium Registration Open',
-        content: 'Registration for the core technical workshops is now open. Seats are limited to 50 students per workshop. Register via the event portal before Feb 28th.',
-        date: 'Feb 25, 2026',
-        author: 'Prof. Davis / CS Dept',
-        iconType: 'Calendar',
-        category: 'Events',
-        color: 'text-indigo-600',
-        bgColor: 'bg-indigo-100',
-        isNew: true
-    },
-    {
-        id: 2,
-        title: 'Library Database Maintenance',
-        content: 'The IEEE and ACM digital libraries will be undergoing scheduled maintenance this weekend. Access will be restored by Sunday 8 PM.',
-        date: 'Feb 24, 2026',
-        author: 'Library Admin',
-        iconType: 'BellRing',
-        category: 'System',
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-100',
-        isNew: false
-    }
-];
-
-const defaultCampusEvents: CampusEvent[] = [
-    { id: 'evt-1', title: 'Tech Symposium', date: '2026-02-28', color: '#4f46e5' },
-    { id: 'evt-2', title: 'Midterm Exams', date: '2026-03-02', end: '2026-03-06', color: '#dc2626' },
-    { id: 'evt-3', title: 'Guest Lecture', date: '2026-03-10', color: '#059669' },
-];
-
-function useSharedState<T>(key: string, defaultValue: T): [T, (val: T | ((prev: T) => T)) => void] {
-    const [state, setState] = useState<T>(() => {
-        try {
-            const stored = localStorage.getItem(key);
-            return stored ? JSON.parse(stored) : defaultValue;
-        } catch {
-            return defaultValue;
-        }
-    });
-
-    useEffect(() => {
-        const handleStorage = (e: StorageEvent) => {
-            if (e.key === key && e.newValue) {
-                setState(JSON.parse(e.newValue));
-            }
-        };
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
-    }, [key]);
-
-    const setSharedState = (newValue: T | ((prev: T) => T)) => {
-        setState((prev) => {
-            const updated = typeof newValue === 'function' ? (newValue as (prev: T) => T)(prev) : newValue;
-            localStorage.setItem(key, JSON.stringify(updated));
-            // Dispatch a custom event so components in the SAME tab also re-render immediately if using other instances
-            window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(updated) }));
-            return updated;
-        });
-    };
-
-    return [state, setSharedState];
-}
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-    const [requests, setRequests] = useSharedState<Request[]>('campusease_requests', defaultRequests);
-    const [announcements, setAnnouncements] = useSharedState<Announcement[]>('campusease_announcements', defaultAnnouncements);
-    const [campusEvents, setCampusEvents] = useSharedState<CampusEvent[]>('campusease_events', defaultCampusEvents);
+    const [requests, setRequests] = useState<Request[]>([]);
+    const [loadingRequests, setLoadingRequests] = useState(true);
 
-    const updateRequestStatus = (id: string, status: Request['status']) => {
-        setRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+
+    const [campusEvents, setCampusEvents] = useState<CampusEvent[]>([]);
+    const [loadingEvents, setLoadingEvents] = useState(true);
+
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loadingNotifications, setLoadingNotifications] = useState(true);
+
+    // ── Subscribe to Requests ──────────────────────────────────────────────────
+    useEffect(() => {
+        const unsubscribe = onValue(ref(db, 'requests'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const list: Request[] = Object.entries(data).map(([key, val]) => ({
+                    ...(val as Omit<Request, 'id'>),
+                    id: key,
+                }));
+                setRequests(list.reverse());
+            } else {
+                setRequests([]);
+            }
+            setLoadingRequests(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // ── Subscribe to Announcements ─────────────────────────────────────────────
+    useEffect(() => {
+        const unsubscribe = onValue(ref(db, 'announcements'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const list: Announcement[] = Object.entries(data).map(([key, val]) => ({
+                    ...(val as Omit<Announcement, 'id'>),
+                    id: key,
+                }));
+                setAnnouncements(list.reverse());
+            } else {
+                setAnnouncements([]);
+            }
+            setLoadingAnnouncements(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // ── Subscribe to CampusEvents ──────────────────────────────────────────────
+    useEffect(() => {
+        const unsubscribe = onValue(ref(db, 'campusEvents'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const list: CampusEvent[] = Object.entries(data).map(([key, val]) => ({
+                    ...(val as Omit<CampusEvent, 'id'>),
+                    id: key,
+                }));
+                setCampusEvents(list);
+            } else {
+                setCampusEvents([]);
+            }
+            setLoadingEvents(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // ── Subscribe to Notifications ─────────────────────────────────────────────
+    useEffect(() => {
+        const unsubscribe = onValue(ref(db, 'notifications'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const list: Notification[] = Object.entries(data).map(([key, val]) => ({
+                    ...(val as Omit<Notification, 'id'>),
+                    id: key,
+                }));
+                setNotifications(list.sort((a, b) => b.timestamp - a.timestamp));
+            } else {
+                setNotifications([]);
+            }
+            setLoadingNotifications(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // ── Requests API ──────────────────────────────────────────────────────────
+
+    const addRequest = (requestData: Omit<Request, 'id' | 'timestamp'>) => {
+        push(ref(db, 'requests'), {
+            ...requestData,
+            timestamp: Date.now()
+        });
     };
 
-    const addRequest = (request: Request) => {
-        setRequests(prev => [request, ...prev]);
+    const updateRequestStatus = async (id: string, status: Request['status']) => {
+        await update(ref(db, `requests/${id}`), { status });
+        
+        // Notify the student
+        const snap = await get(ref(db, `requests/${id}`));
+        if (snap.exists()) {
+            const req = snap.val() as Request;
+            if (req.studentEmail) {
+                addNotification({
+                    title: `Request ${status}`,
+                    message: `Your request "${req.title}" has been ${status.toLowerCase()}.`,
+                    recipientEmail: req.studentEmail,
+                    type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'error' : 'info'
+                });
+            }
+        }
     };
 
     const updateRequest = (id: string, updates: Partial<Request>) => {
-        setRequests(prev => prev.map(req => req.id === id ? { ...req, ...updates } : req));
+        update(ref(db, `requests/${id}`), updates);
     };
 
-    const addAnnouncement = (announcement: Announcement) => {
-        setAnnouncements(prev => [announcement, ...prev]);
+    // ── Announcements API ─────────────────────────────────────────────────────
+
+    const addAnnouncement = (announcement: Omit<Announcement, 'id'>) => {
+        push(ref(db, 'announcements'), announcement);
     };
 
-    const updateAnnouncement = (id: number, updates: Partial<Announcement>) => {
-        setAnnouncements(prev => prev.map(ann => ann.id === id ? { ...ann, ...updates } : ann));
+    const updateAnnouncement = (id: string, updates: Partial<Announcement>) => {
+        update(ref(db, `announcements/${id}`), updates);
     };
 
-    const addCampusEvent = (event: CampusEvent) => {
-        setCampusEvents(prev => [...prev, event]);
+    const deleteAnnouncement = (id: string) => {
+        remove(ref(db, `announcements/${id}`));
+    };
+
+    // ── Campus Events API ─────────────────────────────────────────────────────
+
+    const addCampusEvent = (event: Omit<CampusEvent, 'id'>) => {
+        push(ref(db, 'campusEvents'), event);
     };
 
     const updateCampusEvent = (id: string, updates: Partial<CampusEvent>) => {
-        setCampusEvents(prev => prev.map(evt => evt.id === id ? { ...evt, ...updates } : evt));
+        update(ref(db, `campusEvents/${id}`), updates);
     };
 
     const removeCampusEvent = (id: string) => {
-        setCampusEvents(prev => prev.filter(evt => evt.id !== id));
+        remove(ref(db, `campusEvents/${id}`));
+    };
+
+    // ── Notifications API ─────────────────────────────────────────────────────
+
+    const addNotification = (notif: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => {
+        push(ref(db, 'notifications'), {
+            ...notif,
+            timestamp: Date.now(),
+            isRead: false
+        });
+    };
+
+    const markNotificationAsRead = (id: string) => {
+        update(ref(db, `notifications/${id}`), { isRead: true });
+    };
+
+    const markAllNotificationsAsRead = async (email: string) => {
+        const unread = notifications.filter(n => n.recipientEmail === email && !n.isRead);
+        const updates: Record<string, any> = {};
+        unread.forEach(n => {
+            updates[`/notifications/${n.id}/isRead`] = true;
+        });
+        if (Object.keys(updates).length > 0) {
+            update(ref(db), updates);
+        }
     };
 
     return (
         <AppContext.Provider value={{
-            requests, updateRequestStatus, addRequest, updateRequest,
-            announcements, addAnnouncement, updateAnnouncement,
-            campusEvents, addCampusEvent, updateCampusEvent, removeCampusEvent
+            requests, loadingRequests, updateRequestStatus, addRequest, updateRequest,
+            announcements, loadingAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement,
+            campusEvents, loadingEvents, addCampusEvent, updateCampusEvent, removeCampusEvent,
+            notifications, loadingNotifications, addNotification, markNotificationAsRead, markAllNotificationsAsRead
         }}>
             {children}
         </AppContext.Provider>
@@ -177,3 +269,5 @@ export const useAppContext = () => {
     }
     return context;
 };
+
+export { set, ref };

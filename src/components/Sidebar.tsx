@@ -1,7 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, ClipboardList, Megaphone, MessageSquareText, LogOut, GraduationCap, School, Users, BarChart3 } from 'lucide-react';
+import {
+    Home, ClipboardList, Megaphone, MessageSquareText, LogOut,
+    GraduationCap, School, Users, BarChart3, CalendarDays, Key, UserCheck, BookOpen, GraduationCap as GraduationIcon
+} from 'lucide-react';
 
-export default function Sidebar({ role, setRole }: { role: string, setRole: (r: string | null) => void }) {
+export default function Sidebar({ role, setRole, userName }: { role: string, setRole: (r: string | null) => void, userName: string }) {
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -15,6 +18,7 @@ export default function Sidebar({ role, setRole }: { role: string, setRole: (r: 
         if (role === 'student') {
             return [
                 { name: 'Dashboard', path: '/student', icon: Home },
+                { name: 'Study Materials', path: '/materials', icon: BookOpen },
                 { name: 'My Requests', path: '/requests', icon: ClipboardList },
                 { name: 'Announcements', path: '/announcements', icon: Megaphone },
                 { name: 'AI Assistant', path: '/ai-chat', icon: MessageSquareText },
@@ -24,13 +28,28 @@ export default function Sidebar({ role, setRole }: { role: string, setRole: (r: 
             return [
                 { name: 'Dashboard', path: '/faculty', icon: Home },
                 { name: 'Manage Teachers', path: '/manage-teachers', icon: Users },
-                { name: 'Manage Students', path: '/manage-students', icon: GraduationCap },
+                { name: 'Manage Students', path: '/manage-students', icon: GraduationIcon },
+                { name: 'Manage Passwords', path: '/manage-passwords', icon: Key },
                 { name: 'Reports', path: '/reports', icon: BarChart3 },
             ];
         }
-        // teacher / hod
+        if (role === 'faculty_hod') {
+            return [
+                { name: 'Dashboard', path: '/faculty', icon: Home },
+                { name: 'Attendance', path: '/attendance', icon: UserCheck },
+                { name: 'Post Materials', path: '/faculty-materials', icon: BookOpen },
+                { name: 'Student Directory', path: '/student-directory', icon: Users },
+                { name: 'Manage Requests', path: '/requests', icon: ClipboardList },
+                { name: 'Announcements', path: '/announcements', icon: Megaphone },
+                { name: 'Event Calendar', path: '/event-calendar', icon: CalendarDays },
+            ];
+        }
+        // teacher
         return [
             { name: 'Dashboard', path: '/faculty', icon: Home },
+            { name: 'Attendance', path: '/attendance', icon: UserCheck },
+            { name: 'Post Materials', path: '/faculty-materials', icon: BookOpen },
+            { name: 'Student Directory', path: '/student-directory', icon: Users },
             { name: 'Manage Requests', path: '/requests', icon: ClipboardList },
             { name: 'Announcements', path: '/announcements', icon: Megaphone },
         ];
@@ -71,6 +90,18 @@ export default function Sidebar({ role, setRole }: { role: string, setRole: (r: 
             </div>
 
             <div className="shrink-0 border-t p-4">
+                {/* Role Badge */}
+                <div className="mb-3 rounded-xl bg-gray-50 px-3 py-2 text-center">
+                    <p className="text-xs font-medium text-gray-500">Logged in as</p>
+                    <p className="text-sm font-bold text-blue-600 truncate mb-1">{userName}</p>
+                    <div className="h-px bg-gray-200 w-full mb-1"></div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-tighter">
+                        {role === 'student' ? 'Student' :
+                         role === 'faculty_admin' ? 'System Admin' :
+                         role === 'faculty_hod' ? 'Head of Department' :
+                         'Teacher'}
+                    </p>
+                </div>
                 <button
                     onClick={handleLogout}
                     className="group flex w-full items-center rounded-xl px-3 py-3 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200"
