@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Key, Search, Edit2, ShieldAlert, Loader2, Check, X, Lock } from 'lucide-react';
+import { Key, Search, Edit2, ShieldAlert, Loader2, Check, Lock } from 'lucide-react';
 import { db } from '../firebase';
 import { ref, onValue, update } from 'firebase/database';
 

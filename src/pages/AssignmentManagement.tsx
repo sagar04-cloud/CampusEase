@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Calendar, Clock, FileText, Plus, Trash2, X, Check, Loader2, Link, Search } from 'lucide-react';
+import { BookOpen, Calendar, Plus, Trash2, X, Check, Loader2, Link, Search } from 'lucide-react';
 import { db } from '../firebase';
 import { ref, onValue, push, remove } from 'firebase/database';
 

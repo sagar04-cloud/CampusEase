@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Users, Calendar, Save, Loader2, Search, UserCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Save, Loader2, Search, UserCheck } from 'lucide-react';
 import { db } from '../firebase';
-import { ref, onValue, push, set } from 'firebase/database';
+import { ref, onValue, push } from 'firebase/database';
 
 type Student = {
     id: string;
